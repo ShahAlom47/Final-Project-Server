@@ -19,7 +19,7 @@ app.use(
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.r31xce1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -54,7 +54,7 @@ async function run() {
         res.send(result)
       })
 
-     
+    //  add  food card 
       app.post('/foodCard',async (req,res)=>{
 
         const {cardInfo}= req.body;
@@ -62,6 +62,28 @@ async function run() {
         res.send(result)
        
       })
+
+      // get food Card
+
+      app.get('/foodCard', async(req,res)=>{
+        const {email}=req.query;
+        const filter={userEmail:email}
+        const result = await cardCollection.find(filter).toArray()
+        res.send(result)
+      })
+   
+
+      // get singel cart
+
+      app.get('/menu/:id', async(req,res)=>{
+        const id=req.params.id;
+        const filter={_id: new ObjectId(id)}
+        const result = await menuCollection.findOne(filter)
+        res.send(result)
+        
+ 
+      })
+   
 
 
 
