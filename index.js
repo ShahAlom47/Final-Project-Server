@@ -41,6 +41,7 @@ async function run() {
 
     const menuCollection =  client.db("final_p_DB").collection('menuData')
     const cardCollection =  client.db("final_p_DB").collection('cardData')
+    const reviewsCollection =  client.db("final_p_DB").collection('reviewData')
 
     app.get('/menu', async(req, res) => {
         const category=req.query.category
@@ -100,6 +101,16 @@ async function run() {
         res.send(result)
         
  
+      })
+
+
+      // get review data 
+
+      app.get('/reviews',async(req,res)=>{
+        const cursor = reviewsCollection.find();
+        const result =  await cursor.toArray()
+        res.send(result)
+
       })
    
 
