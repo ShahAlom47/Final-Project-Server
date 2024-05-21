@@ -63,13 +63,31 @@ async function run() {
        
       })
 
-      // get food Card
+      // get food Card by email
 
-      app.get('/foodCard', async(req,res)=>{
+      app.get('/foodCard', async (req,res)=>{
         const {email}=req.query;
         const filter={userEmail:email}
         const result = await cardCollection.find(filter).toArray()
         res.send(result)
+      })
+
+
+      // get food Card
+
+      app.get('/cart', async(req, res) => {
+        const cursor = cardCollection.find();
+        const result =  await cursor.toArray()
+        res.send(result)
+    })
+
+
+      app.delete('/deleteCart/:id', async (req,res)=>{
+        const id=req.params.id
+        const query={cardId:id};
+        const result = await cardCollection.deleteOne(query)
+        res.send(result)
+        console.log(id);
       })
    
 
