@@ -3,6 +3,7 @@ require('dotenv').config()
 const app = express()
 const port = process.env.PORT || 3000;
 var cors = require('cors')
+var jwt = require('jsonwebtoken');
 
 
 
@@ -12,6 +13,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
+
     ],
     credentials: true,
   })
@@ -44,13 +46,54 @@ async function run() {
     const reviewsCollection = client.db("final_p_DB").collection('reviewData')
     const userCollection = client.db("final_p_DB").collection('usersData')
 
+    // middleware 
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unAuthorize access' })
+      }
+      const token = req.headers.authorization.split(' ')[1]
+      jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+          return res.status(403).send({ message: 'forbidden access' })
+        }
+        req.decoded = decoded;
+
+        next()
+      });
+    }
+
+    const verifyAdmin = async (req, res, next) => {
+      const tokenEmail = req.decoded.data;
+      const query = { email: tokenEmail }
+      const result = await userCollection.findOne(query)
+      const isAdmin = result?.role === 'admin'
+      console.log(isAdmin);
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      next()
+    }
+
+    // jwt related API
+
+    app.post('/jwt', async (req, res) => {
+      const userInfo = req.body.userInfo
+
+      const token = jwt.sign({
+        data: userInfo
+      }, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+      res.send({ token })
+
+
+    })
     // user related  api
 
     app.post('/addUser', async (req, res) => {
 
       const userInfo = req.body
       const query = { email: userInfo.email }
-      const existingUser = await userCollection.findOne()
+      const existingUser = await userCollection.findOne(query)
+
       if (existingUser) {
         return res.send({ message: 'user already exist', insertedId: null })
       }
@@ -60,36 +103,56 @@ async function run() {
     })
 
 
-    app.get('/allUsers', async (req, res) => {
+    app.get('/allUsers', verifyToken,verifyAdmin, async (req, res) => {
+      const userEmail = req.decoded.data.userInfo;
       const result = await userCollection.find().toArray()
       res.send(result)
     })
-   
-  //  delete user 
-    app.delete('/user/:id', async (req, res) => {
-      const id =req.params.id
-      console.log(id);
-      const query = {_id: new ObjectId(id)}
+
+    //  delete user 
+    app.delete('/user/:id',verifyToken,verifyAdmin, async (req, res) => {
+      const id = req.params.id
+
+      const query = { _id: new ObjectId(id) }
       const result = await userCollection.deleteOne(query)
       res.send(result)
     })
 
-// admin making
+    // admin making
 
-app.patch('/user/admin/:id', async (req, res) => {
-  const id =req.params.id
-  console.log(id);
-  const filter = {_id: new ObjectId(id)}
-  const updatedDocs={
-      $set:{
-        role:'admin'
+    app.patch('/user/admin/:id',verifyToken,verifyAdmin, async (req, res) => {
+      const id = req.params.id
+
+      const filter = { _id: new ObjectId(id) }
+      const updatedDocs = {
+        $set: {
+          role: 'admin'
+        }
       }
-  }
-  const result = await userCollection.updateOne(filter,updatedDocs)
-  res.send(result)
-})
+      const result = await userCollection.updateOne(filter, updatedDocs)
+      res.send(result)
+    })
 
-// menu related Api
+
+    // get admin Api
+
+    app.get('/user/admin/:email', verifyToken, async (req, res) => {
+      const userEmail = req.params.email
+      const tokenEmail = req.decoded.data;
+      if (userEmail !== tokenEmail) {
+        return res.status(403).send({ message: 'forbidden user' })
+      }
+      const query = { email: userEmail }
+      const result = await userCollection.findOne(query)
+      let admin = false;
+
+      if (result) {
+        admin = result?.role === 'admin'
+      }
+      console.log(userEmail, tokenEmail, result.role === 'admin');
+      res.send(admin)
+    })
+    // menu related Api
 
     app.get('/menu', async (req, res) => {
       const category = req.query.category
@@ -136,7 +199,7 @@ app.patch('/user/admin/:id', async (req, res) => {
       const query = { cardId: id };
       const result = await cardCollection.deleteOne(query)
       res.send(result)
-      console.log(id);
+
     })
 
 
