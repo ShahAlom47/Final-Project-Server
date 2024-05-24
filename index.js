@@ -172,6 +172,35 @@ async function run() {
       res.send(result)
     })
 
+    // get single menu item 
+    app.get('/menu/:id', async (req, res) => {
+      const id=req.params.id
+      const query= {_id:new ObjectId(id)}
+      const result = await menuCollection.findOne(query)
+      res.send(result) 
+     
+    })
+
+    // update menu item
+    app.patch('/menu/update/:id', async (req, res) => {
+      const id=req.params.id
+      const updatedData=req.body
+      const filter= {_id:new ObjectId(id)}
+      const updatedDocs={
+        $set:{
+          name: updatedData.name,
+          recipe: updatedData.recipe,
+          image: updatedData.image ,
+          category: updatedData.category,
+          price: updatedData.price,
+        }
+      }
+      const result = await menuCollection.updateOne(filter,updatedDocs)
+      res.send(result)
+      console.log(updatedData,'id',id);
+     
+    })
+
 // add menu
 
  app.post('/addMenu',verifyToken,verifyAdmin, async (req, res) => {
