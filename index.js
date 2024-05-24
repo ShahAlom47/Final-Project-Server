@@ -67,7 +67,7 @@ async function run() {
       const query = { email: tokenEmail }
       const result = await userCollection.findOne(query)
       const isAdmin = result?.role === 'admin'
-      console.log(isAdmin);
+     
       if (!isAdmin) {
         return res.status(403).send({ message: 'forbidden access' })
       }
@@ -86,6 +86,9 @@ async function run() {
 
 
     })
+
+
+
     // user related  api
 
     app.post('/addUser', async (req, res) => {
@@ -152,6 +155,9 @@ async function run() {
       console.log(userEmail, tokenEmail, result.role === 'admin');
       res.send(admin)
     })
+
+
+
     // menu related Api
 
     app.get('/menu', async (req, res) => {
@@ -165,6 +171,27 @@ async function run() {
       const result = await menuCollection.find(query).toArray();
       res.send(result)
     })
+
+// add menu
+
+ app.post('/addMenu',verifyToken,verifyAdmin, async (req, res) => {
+      const menuItem=req.body
+      const result = await menuCollection.insertOne(menuItem)
+      res.send(result) 
+    })
+
+    // delete menu 
+
+ app.delete('/menu/delete/:id',verifyToken,verifyAdmin, async (req, res) => {
+      const id=req.params.id
+      const query= {_id:new ObjectId(id)}
+      const result = await menuCollection.deleteOne(query)
+      res.send(result) 
+      console.log(id);
+    })
+
+
+
 
     //  add  food card 
     app.post('/foodCard', async (req, res) => {
