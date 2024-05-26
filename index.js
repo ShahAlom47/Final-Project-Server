@@ -6,7 +6,7 @@ var cors = require('cors')
 var jwt = require('jsonwebtoken');
 
 
-
+// https://final-project-server-mu.vercel.app  
 
 app.use(express.json())
 app.use(
@@ -33,6 +33,11 @@ const client = new MongoClient(uri, {
   }
 });
 
+
+// payment related 
+const stripe = require("stripe")('sk_test_51PKiBjL0G1CCoDyDRkCUwtKpYgtrBhUq77lrlEW7VZ3qrktdgwqENoZXkNIamCJc5pdhkyouwywNOZzSdaagQXox00buzKKS5T');
+
+app.use(express.static("public"));
 
 
 
@@ -67,7 +72,7 @@ async function run() {
       const query = { email: tokenEmail }
       const result = await userCollection.findOne(query)
       const isAdmin = result?.role === 'admin'
-     
+
       if (!isAdmin) {
         return res.status(403).send({ message: 'forbidden access' })
       }
@@ -106,14 +111,14 @@ async function run() {
     })
 
 
-    app.get('/allUsers', verifyToken,verifyAdmin, async (req, res) => {
+    app.get('/allUsers', verifyToken, verifyAdmin, async (req, res) => {
       const userEmail = req.decoded.data.userInfo;
       const result = await userCollection.find().toArray()
       res.send(result)
     })
 
     //  delete user 
-    app.delete('/user/:id',verifyToken,verifyAdmin, async (req, res) => {
+    app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
 
       const query = { _id: new ObjectId(id) }
@@ -123,7 +128,7 @@ async function run() {
 
     // admin making
 
-    app.patch('/user/admin/:id',verifyToken,verifyAdmin, async (req, res) => {
+    app.patch('/user/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
 
       const filter = { _id: new ObjectId(id) }
@@ -174,48 +179,48 @@ async function run() {
 
     // get single menu item 
     app.get('/menu/:id', async (req, res) => {
-      const id=req.params.id
-      const query= {_id:new ObjectId(id)}
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
       const result = await menuCollection.findOne(query)
-      res.send(result) 
-     
+      res.send(result)
+
     })
 
     // update menu item
-    app.patch('/menu/update/:id', async (req, res) => {
-      const id=req.params.id
-      const updatedData=req.body
-      const filter= {_id:new ObjectId(id)}
-      const updatedDocs={
-        $set:{
+    app.patch('/menu/update/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id
+      const updatedData = req.body
+      const filter = { _id: new ObjectId(id) }
+      const updatedDocs = {
+        $set: {
           name: updatedData.name,
           recipe: updatedData.recipe,
-          image: updatedData.image ,
+          image: updatedData.image,
           category: updatedData.category,
           price: updatedData.price,
         }
       }
-      const result = await menuCollection.updateOne(filter,updatedDocs)
+      const result = await menuCollection.updateOne(filter, updatedDocs)
       res.send(result)
-      console.log(updatedData,'id',id);
-     
+      console.log(updatedData, 'id', id);
+
     })
 
-// add menu
+    // add menu
 
- app.post('/addMenu',verifyToken,verifyAdmin, async (req, res) => {
-      const menuItem=req.body
+    app.post('/addMenu', verifyToken, verifyAdmin, async (req, res) => {
+      const menuItem = req.body
       const result = await menuCollection.insertOne(menuItem)
-      res.send(result) 
+      res.send(result)
     })
 
     // delete menu 
 
- app.delete('/menu/delete/:id',verifyToken,verifyAdmin, async (req, res) => {
-      const id=req.params.id
-      const query= {_id:new ObjectId(id)}
+    app.delete('/menu/delete/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
       const result = await menuCollection.deleteOne(query)
-      res.send(result) 
+      res.send(result)
       console.log(id);
     })
 
@@ -257,6 +262,25 @@ async function run() {
       res.send(result)
 
     })
+
+    // payment related 
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(100 * price)
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "aed",
+        payment_method_types: [
+          "card",
+        ],
+      
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
 
     // get singel cart
