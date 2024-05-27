@@ -50,6 +50,7 @@ async function run() {
     const cardCollection = client.db("final_p_DB").collection('cardData')
     const reviewsCollection = client.db("final_p_DB").collection('reviewData')
     const userCollection = client.db("final_p_DB").collection('usersData')
+    const paymentCollection = client.db("final_p_DB").collection('paymentData')
 
     // middleware 
     const verifyToken = (req, res, next) => {
@@ -157,7 +158,7 @@ async function run() {
       if (result) {
         admin = result?.role === 'admin'
       }
-      console.log(userEmail, tokenEmail, result.role === 'admin');
+    
       res.send(admin)
     })
 
@@ -202,7 +203,7 @@ async function run() {
       }
       const result = await menuCollection.updateOne(filter, updatedDocs)
       res.send(result)
-      console.log(updatedData, 'id', id);
+    
 
     })
 
@@ -221,7 +222,7 @@ async function run() {
       const query = { _id: new ObjectId(id) }
       const result = await menuCollection.deleteOne(query)
       res.send(result)
-      console.log(id);
+    
     })
 
 
@@ -281,6 +282,24 @@ async function run() {
         clientSecret: paymentIntent.client_secret,
       });
     });
+
+
+// payment history related 
+
+app.post('/payment',async(req,res )=>{
+  const paymentData= req.body
+  const result = await paymentCollection.insertOne(paymentData)
+  // delete menu
+  const query={_id:{
+    $in:paymentData.itemId.map(id=> new ObjectId(id))
+    }
+  }
+  const deleteResult= await  cardCollection.deleteMany(query)
+
+  res.send({result,deleteResult})
+
+})
+
 
 
     // get singel cart
