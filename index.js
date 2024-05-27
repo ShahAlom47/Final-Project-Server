@@ -301,6 +301,22 @@ app.post('/payment',async(req,res )=>{
 })
 
 
+// get payment data 
+
+app.get('/paymentHistory/:email',verifyToken, async(req,res)=>{
+
+  const email= req.params.email
+  const tokenEmail = req.decoded.data;
+
+  if(email!==tokenEmail){
+    res.status(403).send({message:'forbidden access'})
+    return
+  }
+
+const query= {email:email}
+  const result = await paymentCollection.find(query).toArray()
+  res.send(result)
+})
 
     // get singel cart
 
