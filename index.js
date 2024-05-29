@@ -13,6 +13,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
+      'https://bistro-boss-final-projec-81261.web.app'
 
     ],
     credentials: true,
@@ -102,7 +103,6 @@ async function run() {
       const userInfo = req.body
       const query = { email: userInfo.email }
       const existingUser = await userCollection.findOne(query)
-
       if (existingUser) {
         return res.send({ message: 'user already exist', insertedId: null })
       }
@@ -143,6 +143,19 @@ async function run() {
     })
 
 
+    // user Home data 
+    app.get('/userHomeData/:email',verifyToken, async(req,res)=>{
+      const email=req.params.email;
+      
+      const orderData= await cardCollection.countDocuments({userEmail:email});
+      const reviewData= await reviewsCollection.countDocuments({userEmail:email});
+      const paymentData= await paymentCollection.countDocuments({email:email})
+     
+      res.send({order:orderData,review:reviewData,payment:paymentData})
+
+
+    })
+
     // get admin Api
 
     app.get('/user/admin/:email', verifyToken, async (req, res) => {
@@ -163,6 +176,8 @@ async function run() {
     })
 
 
+
+    
 
     // menu related Api
 
@@ -302,6 +317,10 @@ app.post('/payment',async(req,res )=>{
 
 
 // get payment data 
+app.get('/payments',async(req,res)=>{
+  const result= await paymentCollection.find().toArray();
+  res.send(result)
+})
 
 app.get('/paymentHistory/:email',verifyToken, async(req,res)=>{
 
@@ -340,6 +359,109 @@ const query= {email:email}
     })
 
 
+
+    // admin state
+
+    app.get('/admin_state/:email',verifyToken,verifyAdmin, async(req,res)=>{
+      const email=req.params.email
+      
+
+      const users= await userCollection.estimatedDocumentCount();
+      const menus= await menuCollection.estimatedDocumentCount();
+      const payments= await paymentCollection.estimatedDocumentCount();
+      const revenueResult = await paymentCollection.aggregate([
+        {
+          $group:{
+            _id:null,
+            total:{$sum:'$price'}
+          }
+        }
+      ]).toArray();
+      // revenueResult  aita akta array return kore jar modde 2 ta property bt amar dorkar total namer  2nd peoperty tai array te 0 ar besi proparty thakle tar modde theke  total ta ke return koranu hoyece ar jodi na thake ta hole 0 return kora hoyece . 
+      const revenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+      res.send({
+        users,
+        menus,
+        payments,
+        revenue
+      })
+
+    })
+
+
+    app.get('/adminStatData', verifyToken, verifyAdmin, async (req, res) => {
+    
+      const result = await paymentCollection.aggregate([
+      
+       
+          {
+            $addFields: {
+              menuItemsObjectIds: {
+                $map: {
+                  input: '$cartId',
+                  as: 'itemId',
+                  in: { $toObjectId: '$$itemId' }
+                }
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: 'menuData',
+              localField: 'menuItemsObjectIds',
+              foreignField: '_id',
+              as: 'menuItemsData'
+            }
+          },
+          {
+            $unwind: '$menuItemsData'
+          },
+          {
+            $group:{
+              _id:'$menuItemsData.category',
+              quantity:{
+                $sum:1
+              },
+              totalRevenue:{
+                $sum:'$menuItemsData.price'
+              }
+
+            }
+          },
+          {
+            $project:{
+              _id:0,
+              category:'$_id',
+              quantity:1,
+              totalRevenue:1
+
+
+            }
+          }
+
+
+          //
+          // // {
+          // //   $project: {
+          // //     category: '$_id',
+          // //     count: 1,
+          // //     total: { $round: ['$total', 2] },
+          // //     _id: 0
+          // //   }
+          // // }
+        
+      ]).toArray();
+
+      res.send(result);
+    
+    })
+
+    
+
+
+
+    
 
 
     // // Send a ping to confirm a successful connection
